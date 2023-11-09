@@ -26,155 +26,287 @@ app.config["MYSQL_CURSORCLASS"] = "DictCursor"
 mysql = MySQL(app)
 
 # Routes
-# have homepage route to /people by default for convenience, generally this will be your home route with its own template
+# have homepage route
+@app.route("/index")
+def index():
+    return render_template("index.j2")
+
 @app.route("/")
 def home():
-    return redirect("/people")
+    return redirect("/index")
 
 
-# route for people page
-@app.route("/people", methods=["POST", "GET"])
-def people():
+
+
+# route for Customers page
+@app.route("/customers", methods=["POST", "GET"])
+def customers():
     # Separate out the request methods, in this case this is for a POST
-    # insert a person into the bsg_people entity
+    # insert a customer into the customer entity
     if request.method == "POST":
-        # fire off if user presses the Add Person button
-        if request.form.get("Add_Person"):
+        # fire off if user presses the Add Customer button
+        if request.form.get("Add_Customer"):
             # grab user form inputs
-            fname = request.form["fname"]
-            lname = request.form["lname"]
-            homeworld = request.form["homeworld"]
-            age = request.form["age"]
+            first_name = request.form["first_name"]
+            last_name = request.form["last_name"]
+            email = request.form["email"]
 
-            # account for null age AND homeworld
-            if age == "" and homeworld == "0":
-                # mySQL query to insert a new person into bsg_people with our form inputs
-                query = "INSERT INTO bsg_people (fname, lname) VALUES (%s, %s)"
-                cur = mysql.connection.cursor()
-                cur.execute(query, (fname, lname))
-                mysql.connection.commit()
 
-            # account for null homeworld
-            elif homeworld == "0":
-                query = "INSERT INTO bsg_people (fname, lname, age) VALUES (%s, %s,%s)"
-                cur = mysql.connection.cursor()
-                cur.execute(query, (fname, lname, age))
-                mysql.connection.commit()
-
-            # account for null age
-            elif age == "":
-                query = "INSERT INTO bsg_people (fname, lname, homeworld) VALUES (%s, %s,%s)"
-                cur = mysql.connection.cursor()
-                cur.execute(query, (fname, lname, homeworld))
-                mysql.connection.commit()
-
-            # no null inputs
-            else:
-                query = "INSERT INTO bsg_people (fname, lname, homeworld, age) VALUES (%s, %s,%s,%s)"
-                cur = mysql.connection.cursor()
-                cur.execute(query, (fname, lname, homeworld, age))
-                mysql.connection.commit()
+            query = "INSERT INTO Customers (first_name, last_name, email) VALUES (%s, %s,%s)"
+            cur = mysql.connection.cursor()
+            cur.execute(query, (first_name, last_name, email))
+            mysql.connection.commit()
 
             # redirect back to people page
-            return redirect("/people")
+            return redirect("/customers")
 
-    # Grab bsg_people data so we send it to our template to display
+    # Grab Customers data so we send it to our template to display
     if request.method == "GET":
-        # mySQL query to grab all the people in bsg_people
-        query = "SELECT bsg_people.id, fname, lname, bsg_planets.name AS homeworld, age FROM bsg_people LEFT JOIN bsg_planets ON homeworld = bsg_planets.id"
+        # mySQL query to grab all the customers in Customers
+        query = "SELECT customer_id, first_name, last_name, email FROM Customers"
         cur = mysql.connection.cursor()
         cur.execute(query)
         data = cur.fetchall()
 
-        # mySQL query to grab planet id/name data for our dropdown
-        query2 = "SELECT id, name FROM bsg_planets"
-        cur = mysql.connection.cursor()
-        cur.execute(query2)
-        homeworld_data = cur.fetchall()
 
-        # render edit_people page passing our query data and homeworld data to the edit_people template
-        return render_template("people.j2", data=data, homeworlds=homeworld_data)
+        # render edit_customers page passing our query data and rental data to the edit_customers template
+        return render_template("customers.j2", data=data)
 
 
 # route for delete functionality, deleting a person from bsg_people,
 # we want to pass the 'id' value of that person on button click (see HTML) via the route
-@app.route("/delete_people/<int:id>")
-def delete_people(id):
+@app.route("/delete_customers/<int:customer_id>")
+def delete_customers(customer_id):
     # mySQL query to delete the person with our passed id
-    query = "DELETE FROM bsg_people WHERE id = '%s';"
+    query = "DELETE FROM Customers WHERE customer_id = '%s';"
     cur = mysql.connection.cursor()
-    cur.execute(query, (id,))
+    cur.execute(query, (customer_id,))
     mysql.connection.commit()
 
     # redirect back to people page
-    return redirect("/people")
+    return redirect("/customers")
 
 
 # route for edit functionality, updating the attributes of a person in bsg_people
 # similar to our delete route, we want to the pass the 'id' value of that person on button click (see HTML) via the route
-@app.route("/edit_people/<int:id>", methods=["POST", "GET"])
-def edit_people(id):
+@app.route("/edit_customers/<int:customer_id>", methods=["POST", "GET"])
+def edit_customers(customer_id):
     if request.method == "GET":
         # mySQL query to grab the info of the person with our passed id
-        query = "SELECT * FROM bsg_people WHERE id = %s" % (id)
+        query = "SELECT * FROM Customers WHERE customer_id = %s" % (customer_id)
         cur = mysql.connection.cursor()
         cur.execute(query)
         data = cur.fetchall()
 
-        # mySQL query to grab planet id/name data for our dropdown
-        query2 = "SELECT id, name FROM bsg_planets"
-        cur = mysql.connection.cursor()
-        cur.execute(query2)
-        homeworld_data = cur.fetchall()
-
         # render edit_people page passing our query data and homeworld data to the edit_people template
-        return render_template("edit_people.j2", data=data, homeworlds=homeworld_data)
+        return render_template("edit_customers.j2", data=data)
 
     # meat and potatoes of our update functionality
     if request.method == "POST":
         # fire off if user clicks the 'Edit Person' button
-        if request.form.get("Edit_Person"):
+        if request.form.get("Edit_Customer"):
             # grab user form inputs
-            id = request.form["personID"]
-            fname = request.form["fname"]
-            lname = request.form["lname"]
-            homeworld = request.form["homeworld"]
-            age = request.form["age"]
+            customer_id = request.form["customer_id"]
+            first_name = request.form["first_name"]
+            last_name = request.form["last_name"]
+            email = request.form["email"]
 
-            # account for null age AND homeworld
-            if (age == "" or age == "None") and homeworld == "0":
-                # mySQL query to update the attributes of person with our passed id value
-                query = "UPDATE bsg_people SET bsg_people.fname = %s, bsg_people.lname = %s, bsg_people.homeworld = NULL, bsg_people.age = NULL WHERE bsg_people.id = %s"
-                cur = mysql.connection.cursor()
-                cur.execute(query, (fname, lname, id))
-                mysql.connection.commit()
-
-            # account for null homeworld
-            elif homeworld == "0":
-                query = "UPDATE bsg_people SET bsg_people.fname = %s, bsg_people.lname = %s, bsg_people.homeworld = NULL, bsg_people.age = %s WHERE bsg_people.id = %s"
-                cur = mysql.connection.cursor()
-                cur.execute(query, (fname, lname, age, id))
-                mysql.connection.commit()
-
-            # account for null age
-            elif age == "" or age == "None":
-                query = "UPDATE bsg_people SET bsg_people.fname = %s, bsg_people.lname = %s, bsg_people.homeworld = %s, bsg_people.age = NULL WHERE bsg_people.id = %s"
-                cur = mysql.connection.cursor()
-                cur.execute(query, (fname, lname, homeworld, id))
-                mysql.connection.commit()
-
-            # no null inputs
-            else:
-                query = "UPDATE bsg_people SET bsg_people.fname = %s, bsg_people.lname = %s, bsg_people.homeworld = %s, bsg_people.age = %s WHERE bsg_people.id = %s"
-                cur = mysql.connection.cursor()
-                cur.execute(query, (fname, lname, homeworld, age, id))
-                mysql.connection.commit()
+            
+            query = "UPDATE Customers SET Customers.first_name = %s, Customers.last_name = %s, Customers.email = %s WHERE Customers.customer_id = %s"
+            cur = mysql.connection.cursor()
+            cur.execute(query, (first_name, last_name, email, customer_id))
+            mysql.connection.commit()
 
             # redirect back to people page after we execute the update query
-            return redirect("/people")
+            return redirect("/customers")
 
+# route for Movies page
+@app.route("/movies", methods=["POST", "GET"])
+def movies():
+    # Separate out the request methods, in this case this is for a POST
+    # insert a movie into the Movie entity
+    if request.method == "POST":
+        # fire off if user presses the Add Movie button
+        if request.form.get("Add_Movie"):
+            # grab user form inputs
+            title = request.form["title"]
+
+
+            query = "INSERT INTO Movies (title) VALUES (%s)"
+            cur = mysql.connection.cursor()
+            cur.execute(query, (title))
+            mysql.connection.commit()
+
+            # redirect back to Movies page
+            return redirect("/movies")
+
+    # Grab Movies data so we send it to our template to display
+    if request.method == "GET":
+        # mySQL query to grab all the movies in Movies
+        query = "SELECT movie_id, title FROM Movies"
+        cur = mysql.connection.cursor()
+        cur.execute(query)
+        data = cur.fetchall()
+
+
+        # render edit_movies page passing our query data to the edit_movies template
+        return render_template("movies.j2", data=data)
+
+
+# route for delete functionality, deleting a movie from Movies,
+# we want to pass the 'id' value of that movie on button click (see HTML) via the route
+@app.route("/delete_movies/<int:movie_id>")
+def delete_movies(movie_id):
+    # mySQL query to delete the movie with our passed movie_id
+    query = "DELETE FROM Movies WHERE movie_id = '%s';"
+    cur = mysql.connection.cursor()
+    cur.execute(query, (movie_id,))
+    mysql.connection.commit()
+
+    # redirect back to people page
+    return redirect("/movies")
+
+
+# route for Genres page
+@app.route("/genres", methods=["POST", "GET"])
+def genres():
+    # Separate out the request methods, in this case this is for a POST
+    # insert a genre into the Genre entity
+    if request.method == "POST":
+        # fire off if user presses the Add Genre button
+        if request.form.get("Add_Genre"):
+            # grab user form inputs
+            genre_name = request.form["genre_name"]
+
+            query = "INSERT INTO Genres (genre_name) VALUES (%s)"
+            cur = mysql.connection.cursor()
+            cur.execute(query, (genre_name))
+            mysql.connection.commit()
+
+            # redirect back to Genres page
+            return redirect("/genres")
+
+    # Grab Genres data so we send it to our template to display
+    if request.method == "GET":
+        # mySQL query to grab all the genres in Genres
+        query = "SELECT genre_id, genre_name FROM Genres"
+        cur = mysql.connection.cursor()
+        cur.execute(query)
+        data = cur.fetchall()
+
+
+        # render edit_genres page passing our query data to the edit_genres template
+        return render_template("genres.j2", data=data)
+
+
+# route for delete functionality, deleting a genre from Genres,
+# we want to pass the 'id' value of that genre on button click (see HTML) via the route
+@app.route("/delete_genres/<int:genre_id>")
+def delete_genres(genre_id):
+    # mySQL query to delete the person with our passed id
+    query = "DELETE FROM Genres WHERE genre_id = '%s';"
+    cur = mysql.connection.cursor()
+    cur.execute(query, (genre_id,))
+    mysql.connection.commit()
+
+    # redirect back to genres page
+    return redirect("/genres")
+
+# route for Movie_Genre_Details page
+@app.route("/movie_genre_details", methods=["POST", "GET"])
+def movie_genre_details():
+    # Separate out the request methods, in this case this is for a POST
+    # insert a customer into the customer entity
+    if request.method == "POST":
+        # fire off if user presses the Add movie_genre_details button
+        if request.form.get("Add_Movie_Genre_Detail"):
+            # grab user form inputs
+            genre_id = request.form["genre_id"]
+            movie_id = request.form["movie_id"]
+
+            query = "INSERT INTO Movie_Genre_Details (genre_id, movie_id) VALUES (%s,%s)"
+            cur = mysql.connection.cursor()
+            cur.execute(query, (genre_id, movie_id))
+            mysql.connection.commit()
+
+            # redirect back to movie_genre_details page
+            return redirect("/movie_genre_details")
+
+    # Grab Movie_Genre_Details data so we send it to our template to display
+    if request.method == "GET":
+        # mySQL query to grab all the customers in Customers
+        query = "SELECT movie_genre_id, movie_id, genre_id FROM Movie_Genre_Details"
+        cur = mysql.connection.cursor()
+        cur.execute(query)
+        data = cur.fetchall()
+
+
+        # render edit_customers page passing our query data and rental data to the edit_customers template
+        return render_template("movie_genre_details.j2", data=data)
+
+
+# route for delete functionality, deleting a person from bsg_people,
+# we want to pass the 'id' value of that person on button click (see HTML) via the route
+@app.route("/delete_movie_genre_details/<int:movie_genre_id>")
+def delete_movie_genre_details(movie_genre_id):
+    # mySQL query to delete the person with our passed id
+    query = "DELETE FROM Movie_Genre_Details WHERE movie_genre_id = '%s';"
+    cur = mysql.connection.cursor()
+    cur.execute(query, (movie_genre_id,))
+    mysql.connection.commit()
+
+    # redirect back to people page
+    return redirect("/movie_genre_details")
+
+# route for Rentals page
+@app.route("/rentals", methods=["POST", "GET"])
+def rentals():
+    # Separate out the request methods, in this case this is for a POST
+    # insert a rental into the Rentals entity
+    if request.method == "POST":
+        # fire off if user presses the Add Rental button
+        if request.form.get("Add_Rental"):
+            # grab user form inputs
+            customer_id = request.form["customer_id"]
+            movie_id = request.form["movie_id"]
+            due_date = request.form["due_date"]
+
+
+            query = "INSERT INTO Rentals (customer_id, movie_id, due_date) VALUES (%s, %s,%s)"
+            cur = mysql.connection.cursor()
+            cur.execute(query, (customer_id, movie_id, due_date))
+            mysql.connection.commit()
+
+            # redirect back to people page
+            return redirect("/rentals")
+
+    # Grab Customers data so we send it to our template to display
+    if request.method == "GET":
+        # mySQL query to grab all the customers in Customers
+        query = "SELECT rental_id, customer_id, movie_id, due_date FROM Rentals"
+        cur = mysql.connection.cursor()
+        cur.execute(query)
+        data = cur.fetchall()
+
+
+        # render edit_customers page passing our query data and rental data to the edit_customers template
+        return render_template("rentals.j2", data=data)
+
+
+# route for delete functionality, deleting a person from bsg_people,
+# we want to pass the 'id' value of that person on button click (see HTML) via the route
+@app.route("/delete_rentals/<int:rental_id>")
+def delete_rentals(rental_id):
+    # mySQL query to delete the person with our passed id
+    query = "DELETE FROM Rentals WHERE rental_id = '%s';"
+    cur = mysql.connection.cursor()
+    cur.execute(query, (rental_id,))
+    mysql.connection.commit()
+
+    # redirect back to people page
+    return redirect("/rentals")
 
 # Listener
 # change the port number if deploying on the flip servers
 if __name__ == "__main__":
-    app.run(port=3000, debug=True)
+    app.run(port=3234, debug=True)
